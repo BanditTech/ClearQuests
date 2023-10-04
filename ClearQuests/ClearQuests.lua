@@ -65,21 +65,28 @@ local function OpenWhitelistWindow()
 	frame:SetWidth(400)
 	frame:SetHeight(300)
 
-	local editBox = AceGUI:Create("EditBox")
-	editBox:SetLabel("New entry")
-	editBox:SetWidth(300)
-	frame:AddChild(editBox)
-
+	local dropdownlist = AceGUI:Create("Dropdown")
+	dropdownlist:SetLabel("Select Quest")
+	dropdownlist:SetWidth(300)
+	frame:AddChild(dropdownlist)
+	tablelist = {}
+	for i = 1, GetNumQuestLogEntries() do
+		local title, _, _, _, isHeader, _, _, questID = GetQuestLogTitle(i)
+		if title and not isHeader then
+				table.insert(tablelist, title)
+		end
+	end
+	dropdownlist:SetList(tablelist)
 	local addButton = AceGUI:Create("Button")
 	local list = AceGUI:Create("MultiLineEditBox")
 
 	addButton:SetText("Add")
 	addButton:SetWidth(100)
 	addButton:SetCallback("OnClick", function()
-			local newString = editBox:GetText()
+			local dropdownIndex = dropdownlist:GetValue()
+			local newString = tablelist[dropdownIndex]
 			if newString and newString ~= "" then
 					table.insert(CQ.db.global.whitelist, newString)
-					editBox:SetText("")
 					list:SetText(table.concat(CQ.db.global.whitelist, "\n"))
 			end
 	end)
