@@ -36,8 +36,8 @@ function CQ:ClearQuests()
 
 		local valid = titleText and not isHeader
 		local trivial = playerLevel >= (level or 0) + 10
-		local validComplete = (keepTrivialComplete and trivial) or (not keepTrivialComplete and not trivial)
-		local validDungeon = (keepTrivialDungeon and trivial) or (not keepTrivialDungeon and not trivial)
+		local validComplete = (keepTrivialComplete and trivial) or (not trivial)
+		local validDungeon = (keepTrivialDungeon and trivial) or (not trivial)
 	
 		local Keep = titleText:match("Prestige")
 		or titleText:match("Mentorship")
