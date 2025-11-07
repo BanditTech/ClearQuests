@@ -9,8 +9,36 @@ local function tableContains(tbl, val) for _, entry in pairs(tbl) do if entry ==
 -- Helper function to determine if a quest is trivial
 local function isQuestTrivial(playerLevel, questLevel) return playerLevel >= (questLevel or 0) + 10 end
 
+-- Helper function to check if a quest has partial progress
+local function hasPartialProgress(questIndex)
+	local numObjectives = GetNumQuestLeaderBoards(questIndex)
+	if numObjectives == 0 then return false end
+
+	for i = 1, numObjectives do
+		local description, objectiveType, isCompleted = GetQuestLogLeaderBoard(i, questIndex)
+
+		-- Quick check: if objective is completed, we have progress
+		if isCompleted then return true end
+
+		-- For non-completed objectives, check for partial progress
+		if description then
+			-- Parse the description to check for progress pattern like "4/6" or "1/1"
+			local current, total = description:match("(%d+)/(%d+)")
+			if current and total then
+				-- Convert to numbers and check if there's any progress
+				local currentNum = tonumber(current)
+				local totalNum = tonumber(total)
+				if currentNum and totalNum and currentNum > 0 then
+					return true -- Has some progress
+				end
+			end
+		end
+	end
+	return false
+end
+
 -- Helper function to check if a quest should be kept based on type and settings
-local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel)
+local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel, questIndex)
 	-- Always keep these special quests regardless of settings
 	if titleText:match("Prestige") or titleText:match("Mentorship") then return true end
 
@@ -36,6 +64,9 @@ local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, 
 		if not trivial or options.keepTrivialDungeon then return true end
 	end
 
+	-- Partial progress quests
+	if options.keepPartialProgress and hasPartialProgress(questIndex) then return true end
+
 	-- Whitelist check
 	if tableContains(options.whitelist, titleText) then return true end
 
@@ -52,7 +83,7 @@ function CQ:ClearQuests()
 
 		-- Skip headers and invalid entries
 		if titleText and not isHeader then
-			local keepQuest = shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel)
+			local keepQuest = shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel, i)
 
 			if not keepQuest then
 				SelectQuestLogEntry(i)
@@ -125,6 +156,7 @@ local defaults = {
 		keepTrivialDungeon = false,
 		keepTrivialComplete = false,
 		keepAscension = true,
+		keepPartialProgress = false,
 		whitelist = {}
 	}
 }
@@ -188,12 +220,18 @@ local OptionsTable = {
 			type = "toggle",
 			order = 16
 		},
+		keepPartialProgress = {
+			name = "Keep Partial Progress",
+			desc = "Keep quests with any progress made (objectives completed or partial objectives).",
+			type = "toggle",
+			order = 17
+		},
 		manageCustomStrings = {
 			name = "Manage Whitelist",
 			type = "execute",
 			width = "full",
 			func = OpenWhitelistWindow,
-			order = 17
+			order = 18
 		}
 	}
 }
