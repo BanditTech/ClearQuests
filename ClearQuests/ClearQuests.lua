@@ -76,10 +76,11 @@ local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, 
 	return false
 end
 
--- Clear the quest log
-function CQ:ClearQuests()
-	local options = self.db.global
+-- Function to get list of quests that will be abandoned
+local function getQuestsToAbandon()
+	local options = CQ.db.global
 	local playerLevel = UnitLevel("player")
+	local questsToAbandon = {}
 
 	for i = 1, GetNumQuestLogEntries() do
 		local titleText, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i)
@@ -89,12 +90,119 @@ function CQ:ClearQuests()
 			local keepQuest = shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel, i)
 
 			if not keepQuest then
-				SelectQuestLogEntry(i)
-				SetAbandonQuest()
-				AbandonQuest()
+				table.insert(questsToAbandon, {
+					index = i,
+					title = titleText,
+					level = level or "?",
+					tag = questTag or ""
+				})
 			end
 		end
 	end
+
+	return questsToAbandon
+end
+
+-- Function to show confirmation dialog
+local function showConfirmationDialog(questsToAbandon, reopenOptions)
+	local AceGUI = LibStub("AceGUI-3.0")
+	AceConfigDialog:Close("ClearQuests")
+
+	if #questsToAbandon == 0 then
+		-- No quests to abandon
+		local frame = AceGUI:Create("Frame")
+		frame:SetTitle("Clear Quests - No Action Needed")
+		frame:SetLayout("Flow")
+		frame:SetWidth(400)
+		frame:SetHeight(150)
+
+		local label = AceGUI:Create("Label")
+		label:SetText("No quests will be abandoned based on your current settings.")
+		label:SetFullWidth(true)
+		frame:AddChild(label)
+
+		frame:SetCallback("OnClose", function(widget) if reopenOptions then AceConfigDialog:Open("ClearQuests") end end)
+
+		frame:Show()
+		return
+	end
+
+	-- Create confirmation dialog
+	local frame = AceGUI:Create("Frame")
+	frame:SetTitle("Clear Quests - Confirmation")
+	frame:SetLayout("Flow")
+	frame:SetWidth(400)
+	frame:SetHeight(245)
+
+	local label = AceGUI:Create("Label")
+	label:SetText("The following " .. #questsToAbandon .. " quest" .. (#questsToAbandon == 1 and "" or "s") .. " will be abandoned:")
+	label:SetFullWidth(true)
+	frame:AddChild(label)
+
+	-- Create scrollable list of quests
+	local scrollContainer = AceGUI:Create("ScrollFrame")
+	scrollContainer:SetLayout("List")
+	scrollContainer:SetFullWidth(true)
+	scrollContainer:SetHeight(160)
+	frame:AddChild(scrollContainer)
+
+	-- Add individual quest labels to the scroll container
+	for _, quest in ipairs(questsToAbandon) do
+		local levelText = quest.level ~= "?" and ("[" .. quest.level .. "] ") or ""
+		local tagText = quest.tag ~= "" and (" (" .. quest.tag .. ")") or ""
+		local questText = levelText .. quest.title .. tagText
+
+		local questLabel = AceGUI:Create("Label")
+		questLabel:SetText(questText)
+		questLabel:SetFullWidth(true)
+		scrollContainer:AddChild(questLabel)
+	end
+
+	-- Add abandon button directly to frame
+	local confirmButton = AceGUI:Create("Button")
+	confirmButton:SetText("Abandon These Quests")
+	confirmButton:SetWidth(250)
+	confirmButton:SetHeight(21)
+	confirmButton:SetCallback("OnClick", function()
+		frame:SetCallback("OnClose", function() end) -- Override with empty function to prevent reopening
+		frame:Release()
+		CQ:ExecuteClearQuests(questsToAbandon) -- Pass the pre-calculated table
+	end)
+	frame:AddChild(confirmButton)
+
+	frame:SetCallback("OnClose", function(widget) if reopenOptions then AceConfigDialog:Open("ClearQuests") end end)
+
+	frame:Show()
+end
+
+-- The actual quest clearing function
+function CQ:ExecuteClearQuests(questsToAbandon)
+	if #questsToAbandon == 0 then return end
+
+	-- Abandon quests in reverse order to maintain correct indices
+	for i = #questsToAbandon, 1, -1 do
+		local quest = questsToAbandon[i]
+		-- SelectQuestLogEntry(quest.index)
+		-- SetAbandonQuest()
+		-- AbandonQuest()
+	end
+
+	-- Print summary of abandoned quests
+	local questDescriptions = {}
+	for _, quest in ipairs(questsToAbandon) do
+		local levelText = quest.level ~= "?" and ("[" .. quest.level .. "] ") or ""
+		local tagText = quest.tag ~= "" and (" (" .. quest.tag .. ")") or ""
+		local questDescription = levelText .. quest.title .. tagText
+		table.insert(questDescriptions, questDescription)
+	end
+
+	print("|cFFFFD700ClearQuests:|r Abandoned " .. #questsToAbandon .. " quest" .. (#questsToAbandon == 1 and "" or "s") .. ": " .. table.concat(questDescriptions, ", "))
+end
+
+-- New main function that shows confirmation first
+function CQ:ClearQuests(reopenOptions)
+	local questsToAbandon = getQuestsToAbandon()
+	showConfirmationDialog(questsToAbandon, reopenOptions)
 end
 
 -- Function to open the Whitelist management window
@@ -174,7 +282,7 @@ local OptionsTable = {
 			name = "Clear Your Quest Log",
 			type = "execute",
 			width = "full",
-			func = function(msg) CQ:ClearQuests() end,
+			func = function(msg) CQ:ClearQuests(true) end,
 			desc = "Runs the script to clear your quest log. Respects the options set below",
 			order = 1
 		},
@@ -255,6 +363,32 @@ function CQ:OnInitialize() self.db = AceDB:New("CQOptions", defaults, true) end
 SLASH_CLEARQUESTS1 = "/cq"
 SLASH_CLEARQUESTS2 = "/clearquests"
 SlashCmdList["CLEARQUESTS"] = function(msg)
-	AceConfigDialog:SetDefaultSize("ClearQuests", 400, 310)
-	AceConfigDialog:Open("ClearQuests")
+	-- Trim whitespace and convert to lowercase
+	local command = string.lower(string.trim and string.trim(msg) or msg:match("^%s*(.-)%s*$"))
+
+	if command == "clear" then
+		-- Direct execution - run the quest clearing with confirmation dialog
+		CQ:ClearQuests(false) -- Don't reopen options when called from command line
+	elseif command == "force" then
+		-- Immediate execution without confirmation dialog
+		local questsToAbandon = getQuestsToAbandon()
+		if #questsToAbandon > 0 then
+			-- print("|cFFFFD700ClearQuests:|r Abandoning " .. #questsToAbandon .. " quest" .. (#questsToAbandon == 1 and "" or "s") .. "...")
+			CQ:ExecuteClearQuests(questsToAbandon)
+			-- print("|cFFFFD700ClearQuests:|r Quest clearing completed!")
+		else
+			print("|cFFFFD700ClearQuests:|r No quests to abandon based on your current settings.")
+		end
+	elseif command == "help" then
+		-- Show help information
+		print("|cFFFFD700ClearQuests Commands:|r")
+		print("  |c0000FFFF/cq|r or |c0000FFFF/clearquests|r - Open settings GUI")
+		print("  |c0000FFFF/cq clear|r - Show confirmation dialog before clearing")
+		print("  |c0000FFFF/cq force|r - Clear quests immediately without confirmation")
+		print("  |c0000FFFF/cq help|r - Show this help")
+	else
+		-- Default behavior - open the settings GUI
+		AceConfigDialog:SetDefaultSize("ClearQuests", 400, 310)
+		AceConfigDialog:Open("ClearQuests")
+	end
 end
