@@ -373,9 +373,7 @@ SlashCmdList["CLEARQUESTS"] = function(msg)
 		-- Immediate execution without confirmation dialog
 		local questsToAbandon = getQuestsToAbandon()
 		if #questsToAbandon > 0 then
-			-- print("|cFFFFD700ClearQuests:|r Abandoning " .. #questsToAbandon .. " quest" .. (#questsToAbandon == 1 and "" or "s") .. "...")
 			CQ:ExecuteClearQuests(questsToAbandon)
-			-- print("|cFFFFD700ClearQuests:|r Quest clearing completed!")
 		else
 			print("|cFFFFD700ClearQuests:|r No quests to abandon based on your current settings.")
 		end
