@@ -42,7 +42,7 @@ local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, 
 	-- Always keep these special quests regardless of settings
 	if titleText:match("Prestige") or titleText:match("Mentorship") then return true end
 
-	-- Check if quest is trivial (more than 10 levels below player)
+	-- Check if quest is trivial (more than 9 levels below player)
 	local trivial = isQuestTrivial(playerLevel, level)
 
 	-- Path to Ascension quests
@@ -65,7 +65,10 @@ local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, 
 	end
 
 	-- Partial progress quests
-	if options.keepPartialProgress and hasPartialProgress(questIndex) then return true end
+	if options.keepPartialProgress and hasPartialProgress(questIndex) then
+		-- Keep if non-trivial OR if keeping trivial partial progress is enabled
+		if not trivial or options.keepTrivialPartialProgress then return true end
+	end
 
 	-- Whitelist check
 	if tableContains(options.whitelist, titleText) then return true end
@@ -157,6 +160,7 @@ local defaults = {
 		keepTrivialComplete = false,
 		keepAscension = true,
 		keepPartialProgress = false,
+		keepTrivialPartialProgress = false,
 		whitelist = {}
 	}
 }
@@ -222,16 +226,22 @@ local OptionsTable = {
 		},
 		keepPartialProgress = {
 			name = "Keep Partial Progress",
-			desc = "Keep quests with any progress made (objectives completed or partial objectives).",
+			desc = "Keep non-trivial quests with any progress made (objectives completed or partial objectives).",
 			type = "toggle",
 			order = 17
+		},
+		keepTrivialPartialProgress = {
+			name = "Keep Trivial Partial Progress",
+			desc = "Keep quests with partial progress more than 9 levels below your level.",
+			type = "toggle",
+			order = 18
 		},
 		manageCustomStrings = {
 			name = "Manage Whitelist",
 			type = "execute",
 			width = "full",
 			func = OpenWhitelistWindow,
-			order = 18
+			order = 19
 		}
 	}
 }
