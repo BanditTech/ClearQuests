@@ -6,34 +6,55 @@ local AceDB = LibStub("AceDB-3.0")
 local CQ = ClearQuests
 local function tableContains(tbl, val) for _, entry in pairs(tbl) do if entry == val then return true end end end
 
+-- Helper function to determine if a quest is trivial
+local function isQuestTrivial(playerLevel, questLevel) return playerLevel >= (questLevel or 0) + 10 end
+
+-- Helper function to check if a quest should be kept based on type and settings
+local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel)
+	-- Always keep these special quests regardless of settings
+	if titleText:match("Prestige") or titleText:match("Mentorship") then return true end
+
+	-- Check if quest is trivial (more than 10 levels below player)
+	local trivial = isQuestTrivial(playerLevel, level)
+
+	-- Path to Ascension quests
+	local isPathToAscension = titleText:match("Path to Ascension")
+	if options.keepAscension and isPathToAscension then return true end
+
+	-- Completed quests
+	if options.keepComplete and isComplete == 1 then
+		-- Keep if non-trivial OR if keeping trivial completed is enabled
+		if not trivial or options.keepTrivialComplete then return true end
+	end
+
+	-- Daily quests
+	if options.keepDaily and isDaily == 1 then return true end
+
+	-- Dungeon quests
+	if options.keepDungeon and questTag == "Dungeon" then
+		-- Keep if non-trivial OR if keeping trivial dungeons is enabled
+		if not trivial or options.keepTrivialDungeon then return true end
+	end
+
+	-- Whitelist check
+	if tableContains(options.whitelist, titleText) then return true end
+
+	return false
+end
+
+-- Clear the quest log
 function CQ:ClearQuests()
-	-- Clear the quest log
 	local options = self.db.global
-
-	local keepComplete = options.keepComplete
-	local keepDaily = options.keepDaily
-	local keepDungeon = options.keepDungeon
-	local keepTrivialDungeon = options.keepTrivialDungeon
-	local keepTrivialComplete = options.keepTrivialComplete
-	local keepAscension = options.keepAscension
-	local whitelist = options.whitelist
-
 	local playerLevel = UnitLevel("player")
 
 	for i = 1, GetNumQuestLogEntries() do
 		local titleText, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i)
 
-		local valid = titleText and not isHeader
-		if valid then
-			local trivial = playerLevel >= (level or 0) + 10
-			local validComplete = (keepTrivialComplete and trivial) or (not trivial)
-			local validDungeon = (keepTrivialDungeon and trivial) or (not trivial)
-			local isPathToAscension = titleText and titleText:match("Path to Ascension")
+		-- Skip headers and invalid entries
+		if titleText and not isHeader then
+			local keepQuest = shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, options, playerLevel)
 
-			local Keep = titleText:match("Prestige") or titleText:match("Mentorship") or (keepAscension and isPathToAscension) or (keepComplete and isComplete == 1 and validComplete)
-				             or (keepDaily and isDaily == 1) or (keepDungeon and questTag == "Dungeon" and validDungeon) or tableContains(whitelist, titleText)
-
-			if not Keep then
+			if not keepQuest then
 				SelectQuestLogEntry(i)
 				SetAbandonQuest()
 				AbandonQuest()
