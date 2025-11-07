@@ -4,6 +4,4 @@
 ## Author: BanditTech
 ##SavedVariables: CQOptions
 
-Libs\embeds.xml
-
 ClearQuests.lua
