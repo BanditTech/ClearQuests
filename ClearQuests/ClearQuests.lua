@@ -171,8 +171,9 @@ local OptionsTable = {
 	set = function(info, val) CQ.db.global[info[#info]] = val end,
 	args = {
 		run = {
-			name = "Clear Quests",
+			name = "Clear Your Quest Log",
 			type = "execute",
+			width = "full",
 			func = function(msg) CQ:ClearQuests() end,
 			desc = "Runs the script to clear your quest log. Respects the options set below",
 			order = 1
@@ -188,15 +189,15 @@ local OptionsTable = {
 			type = "header",
 			order = 3
 		},
-		keepComplete = {
-			name = "Keep Complete",
-			desc = "Keep non-trivial quests marked as complete.",
-			type = "toggle",
-			order = 11
-		},
 		keepDaily = {
 			name = "Keep Daily",
 			desc = "Keep quests marked as daily.",
+			type = "toggle",
+			order = 11
+		},
+		keepAscension = {
+			name = "Keep Path to Ascension",
+			desc = "Keep quests related to the Path to Ascension.",
 			type = "toggle",
 			order = 12
 		},
@@ -212,15 +213,15 @@ local OptionsTable = {
 			type = "toggle",
 			order = 14
 		},
-		keepTrivialComplete = {
-			name = "Keep Trivial Completed",
-			desc = "Keep completed quests more than 9 levels below your level.",
+		keepComplete = {
+			name = "Keep Complete",
+			desc = "Keep non-trivial quests marked as complete.",
 			type = "toggle",
 			order = 15
 		},
-		keepAscension = {
-			name = "Keep Path to Ascension",
-			desc = "Keep quests related to the Path to Ascension.",
+		keepTrivialComplete = {
+			name = "Keep Trivial Completed",
+			desc = "Keep completed quests more than 9 levels below your level.",
 			type = "toggle",
 			order = 16
 		},
