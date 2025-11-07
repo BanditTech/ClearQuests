@@ -63,18 +63,22 @@ jobs:
       - name: Check if tag exists
         id: check_tag
         run: |
+          # Fetch all tags from remote to ensure we have the latest
+          git fetch --tags
+
           if git rev-parse "refs/tags/$TAG_VERSION" >/dev/null 2>&1; then
-            echo "Tag exists."
+            echo "Tag $TAG_VERSION already exists."
             echo "EXISTS=true" >> $GITHUB_ENV
           else
-            echo "Tag does not exist."
+            echo "Tag $TAG_VERSION does not exist."
             echo "EXISTS=false" >> $GITHUB_ENV
           fi
 
       - name: Exit if tag already exists
         if: env.EXISTS == 'true'
         run: |
-          echo "Tag already exists. Skipping release."
+          echo "::notice::Tag $TAG_VERSION already exists. Skipping release."
+          echo "Tag $TAG_VERSION already exists. Skipping release."
           exit 0
 
       - name: Create tag
