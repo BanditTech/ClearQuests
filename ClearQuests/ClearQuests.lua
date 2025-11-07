@@ -182,9 +182,9 @@ function CQ:ExecuteClearQuests(questsToAbandon)
 	-- Abandon quests in reverse order to maintain correct indices
 	for i = #questsToAbandon, 1, -1 do
 		local quest = questsToAbandon[i]
-		-- SelectQuestLogEntry(quest.index)
-		-- SetAbandonQuest()
-		-- AbandonQuest()
+		SelectQuestLogEntry(quest.index)
+		SetAbandonQuest()
+		AbandonQuest()
 	end
 
 	-- Print summary of abandoned quests
