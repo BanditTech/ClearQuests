@@ -1,9 +1,9 @@
 -- Load AceConfig-3.0
+ClearQuests = LibStub("AceAddon-3.0"):NewAddon("ClearQuests")
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 local AceDB = LibStub("AceDB-3.0")
-local CQ = LibStub("AceAddon-3.0"):GetAddon("ClearQuests")
-
+local CQ = ClearQuests
 local function tableContains(tbl, val) for _, entry in pairs(tbl) do if entry == val then return true end end end
 
 function CQ:ClearQuests()
@@ -24,18 +24,20 @@ function CQ:ClearQuests()
 		local titleText, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i)
 
 		local valid = titleText and not isHeader
-		local trivial = playerLevel >= (level or 0) + 10
-		local validComplete = (keepTrivialComplete and trivial) or (not trivial)
-		local validDungeon = (keepTrivialDungeon and trivial) or (not trivial)
-		local isPathToAscension = titleText and titleText:match("Path to Ascension")
+		if valid then
+			local trivial = playerLevel >= (level or 0) + 10
+			local validComplete = (keepTrivialComplete and trivial) or (not trivial)
+			local validDungeon = (keepTrivialDungeon and trivial) or (not trivial)
+			local isPathToAscension = titleText and titleText:match("Path to Ascension")
 
-		local Keep = titleText:match("Prestige") or titleText:match("Mentorship") or (keepAscension and isPathToAscension) or (keepComplete and isComplete == 1 and validComplete)
-			             or (keepDaily and isDaily == 1) or (keepDungeon and questTag == "Dungeon" and validDungeon) or tableContains(whitelist, titleText)
+			local Keep = titleText:match("Prestige") or titleText:match("Mentorship") or (keepAscension and isPathToAscension) or (keepComplete and isComplete == 1 and validComplete)
+				             or (keepDaily and isDaily == 1) or (keepDungeon and questTag == "Dungeon" and validDungeon) or tableContains(whitelist, titleText)
 
-		if valid and not Keep then
-			SelectQuestLogEntry(i)
-			SetAbandonQuest()
-			AbandonQuest()
+			if not Keep then
+				SelectQuestLogEntry(i)
+				SetAbandonQuest()
+				AbandonQuest()
+			end
 		end
 	end
 end
