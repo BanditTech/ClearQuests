@@ -50,14 +50,20 @@ jobs:
             exit 1
           fi
 
+          # Clean the version and ensure consistent format
+          version=$(echo "$version" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          tag_version="$version"
+
           echo "VERSION=$version" >> $GITHUB_ENV
+          echo "TAG_VERSION=$tag_version" >> $GITHUB_ENV
           echo "::set-output name=version::$version"
           echo "Detected version: $version"
+          echo "Tag will be: $tag_version"
 
       - name: Check if tag exists
         id: check_tag
         run: |
-          if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
+          if git rev-parse "refs/tags/$TAG_VERSION" >/dev/null 2>&1; then
             echo "Tag exists."
             echo "EXISTS=true" >> $GITHUB_ENV
           else
@@ -75,8 +81,8 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag "$VERSION"
-          git push origin "$VERSION"
+          git tag "$TAG_VERSION"
+          git push origin "$TAG_VERSION"
 
       - name: Prepare release zip
         run: |
@@ -96,7 +102,7 @@ jobs:
       - name: Create GitHub Release and Upload Zip
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: ${{ env.TAG_VERSION }}
           name: ${{ env.ADDON_NAME }} ${{ env.VERSION }}
           files: |
             ${{ env.ZIP_NAME }}
