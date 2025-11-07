@@ -79,9 +79,9 @@ jobs:
         run: |
           echo "::notice::Tag $TAG_VERSION already exists. Skipping release."
           echo "Tag $TAG_VERSION already exists. Skipping release."
-          exit 0
 
       - name: Create tag
+        if: env.EXISTS == 'false'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -89,6 +89,7 @@ jobs:
           git push origin "$TAG_VERSION"
 
       - name: Prepare release zip
+        if: env.EXISTS == 'false'
         run: |
           zip_name="${ADDON_NAME}-${VERSION}.zip"
           echo "Preparing zip for $ADDON_NAME -> $zip_name"
@@ -104,6 +105,7 @@ jobs:
           echo "✅ Created ${zip_name}"
 
       - name: Create GitHub Release and Upload Zip
+        if: env.EXISTS == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_VERSION }}
