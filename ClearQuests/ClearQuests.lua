@@ -130,6 +130,34 @@ local function getQuestsToAbandon()
 	return questsToAbandon
 end
 
+-- Function to get list of dungeon quests to abandon
+local function getDungeonQuests()
+	local playerLevel = UnitLevel("player")
+	local dungeonQuests = {}
+
+	for i = 1, GetNumQuestLogEntries() do
+		local titleText, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i)
+
+		-- Only get dungeon quests that are not complete and have no progress
+		if titleText and not isHeader and questTag == "Dungeon" then
+			-- Skip if quest is complete
+			if isComplete ~= 1 then
+				-- Skip if quest has partial progress
+				if not hasPartialProgress(i) then
+					table.insert(dungeonQuests, {
+						index = i,
+						title = titleText,
+						level = level or "?",
+						tag = questTag or ""
+					})
+				end
+			end
+		end
+	end
+
+	return dungeonQuests
+end
+
 -- Function to show confirmation dialog
 local function showConfirmationDialog(questsToAbandon, reopenOptions)
 	local AceGUI = LibStub("AceGUI-3.0")
@@ -411,12 +439,21 @@ SlashCmdList["CLEARQUESTS"] = function(msg)
 		else
 			print("|cFFFFD700ClearQuests:|r No quests to abandon based on your current settings.")
 		end
+	elseif command == "dungeon" then
+		-- Clear incomplete dungeon quests (without progress) with confirmation
+		local dungeonQuests = getDungeonQuests()
+		if #dungeonQuests > 0 then
+			showConfirmationDialog(dungeonQuests, false)
+		else
+			print("|cFFFFD700ClearQuests:|r No incomplete dungeon quests without progress found.")
+		end
 	elseif command == "help" then
 		-- Show help information
 		print("|cFFFFD700ClearQuests Commands:|r")
 		print("  |c0000FFFF/cq|r or |c0000FFFF/clearquests|r - Open settings GUI")
 		print("  |c0000FFFF/cq clear|r - Show confirmation dialog before clearing")
 		print("  |c0000FFFF/cq force|r - Clear quests immediately without confirmation")
+		print("  |c0000FFFF/cq dungeon|r - Clear incomplete dungeon quests (keeps completed/in-progress)")
 		print("  |c0000FFFF/cq help|r - Show this help")
 	else
 		-- Default behavior - open the settings GUI
