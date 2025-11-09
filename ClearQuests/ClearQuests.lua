@@ -9,6 +9,28 @@ local function tableContains(tbl, val) for _, entry in pairs(tbl) do if entry ==
 -- Helper function to determine if a quest is trivial
 local function isQuestTrivial(playerLevel, questLevel) return playerLevel >= (questLevel or 0) + 10 end
 
+-- Helper function to check if a quest is a breadcrumb (no progress tracking)
+local function isBreadcrumbQuest(questIndex)
+	local numObjectives = GetNumQuestLeaderBoards(questIndex)
+	-- No objectives means it's a breadcrumb
+	if numObjectives == 0 then return true end
+
+	for i = 1, numObjectives do
+		local description, objectiveType, isCompleted = GetQuestLogLeaderBoard(i, questIndex)
+
+		if description then
+			-- Check if the description contains a progress pattern like "0/1" or "4/6"
+			local hasProgressPattern = description:match("%d+/%d+")
+			if hasProgressPattern then
+				return false -- Has progress tracking, not a breadcrumb
+			end
+		end
+	end
+
+	-- If we have objectives but none have progress patterns, it's a breadcrumb
+	return true
+end
+
 -- Helper function to check if a quest has partial progress
 local function hasPartialProgress(questIndex)
 	local numObjectives = GetNumQuestLeaderBoards(questIndex)
@@ -68,6 +90,11 @@ local function shouldKeepQuest(titleText, level, questTag, isComplete, isDaily, 
 	if options.keepPartialProgress and hasPartialProgress(questIndex) then
 		-- Keep if non-trivial OR if keeping trivial partial progress is enabled
 		if not trivial or options.keepTrivialPartialProgress then return true end
+	end
+
+	-- Breadcrumb quests (quests with no progress tracking)
+	if options.keepBreadcrumb and isBreadcrumbQuest(questIndex) then
+		return true
 	end
 
 	-- Whitelist check
@@ -261,14 +288,15 @@ end
 
 local defaults = {
 	global = {
-		keepComplete = true,
 		keepDaily = true,
+		keepAscension = true,
+		keepComplete = true,
+		keepTrivialComplete = false,
 		keepDungeon = true,
 		keepTrivialDungeon = false,
-		keepTrivialComplete = false,
-		keepAscension = true,
 		keepPartialProgress = false,
 		keepTrivialPartialProgress = false,
+		keepBreadcrumb = true,
 		whitelist = {}
 	}
 }
@@ -345,12 +373,18 @@ local OptionsTable = {
 			type = "toggle",
 			order = 18
 		},
+		keepBreadcrumb = {
+			name = "Keep Breadcrumb Quests",
+			desc = "Keep quests with no progress tracking (simple walk-to/turn-in quests).",
+			type = "toggle",
+			order = 19
+		},
 		manageCustomStrings = {
 			name = "Manage Whitelist",
 			type = "execute",
 			width = "full",
 			func = OpenWhitelistWindow,
-			order = 19
+			order = 20
 		}
 	}
 }
