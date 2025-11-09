@@ -158,6 +158,36 @@ local function getDungeonQuests()
 	return dungeonQuests
 end
 
+-- Function to get list of daily quests to abandon
+local function getDailyQuests()
+	local dailyQuests = {}
+
+	for i = 1, GetNumQuestLogEntries() do
+		local titleText, level, questTag, suggestedGroup, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle(i)
+
+		-- Only get daily quests that are not complete, have no progress, and are not Dungeon Diving quests
+		if titleText and not isHeader and isDaily == 1 then
+			-- Skip Dungeon Diving and Battleground quests
+			if not (titleText:match("Dungeon Diving") or titleText:match("Battleground")) then
+				-- Skip if quest is complete
+				if isComplete ~= 1 then
+					-- Skip if quest has partial progress
+					if not hasPartialProgress(i) then
+						table.insert(dailyQuests, {
+							index = i,
+							title = titleText,
+							level = level or "?",
+							tag = questTag or ""
+						})
+					end
+				end
+			end
+		end
+	end
+
+	return dailyQuests
+end
+
 -- Function to show confirmation dialog
 local function showConfirmationDialog(questsToAbandon, reopenOptions)
 	local AceGUI = LibStub("AceGUI-3.0")
@@ -447,13 +477,22 @@ SlashCmdList["CLEARQUESTS"] = function(msg)
 		else
 			print("|cFFFFD700ClearQuests:|r No incomplete dungeon quests without progress found.")
 		end
+	elseif command == "daily" then
+		-- Clear incomplete daily quests (without progress) with confirmation
+		local dailyQuests = getDailyQuests()
+		if #dailyQuests > 0 then
+			showConfirmationDialog(dailyQuests, false)
+		else
+			print("|cFFFFD700ClearQuests:|r No incomplete daily quests without progress found.")
+		end
 	elseif command == "help" then
 		-- Show help information
 		print("|cFFFFD700ClearQuests Commands:|r")
 		print("  |c0000FFFF/cq|r or |c0000FFFF/clearquests|r - Open settings GUI")
 		print("  |c0000FFFF/cq clear|r - Show confirmation dialog before clearing")
 		print("  |c0000FFFF/cq force|r - Clear quests immediately without confirmation")
-		print("  |c0000FFFF/cq dungeon|r - Clear incomplete dungeon quests (keeps completed/in-progress)")
+		print("  |c0000FFFF/cq dungeon|r - Clear dungeon quests without progress after confirmation")
+		print("  |c0000FFFF/cq daily|r - Clear daily quests without progress after confirmation (keeps Dungeon Diving/Battleground)")
 		print("  |c0000FFFF/cq help|r - Show this help")
 	else
 		-- Default behavior - open the settings GUI
